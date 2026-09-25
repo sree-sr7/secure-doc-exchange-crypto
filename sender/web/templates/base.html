@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1020">
+  <title>{% block title %}Secure Document Sender{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="{{ 'sender-page' if request.endpoint in ('index', 'send') else 'keys-page' }}">
+  <div class="shell">
+    <header class="topbar">
+      <a class="brand" href="{{ url_for('index') }}" aria-label="Secure Document Sender home">
+        <span class="brand-mark" aria-hidden="true">✦</span>
+        <span><strong>SECURE<span class="brand-accent">DOC</span></strong><small>Secure. Sign. Send. Verify.</small></span>
+      </a>
+      <nav aria-label="Main navigation">
+        <a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint in ('index', 'send') else '' }}">Send Document</a>
+        <a href="{{ url_for('keys_page') }}" class="{{ 'active' if request.endpoint in ('keys_page', 'keys_generate') else '' }}">Generate Keys</a>
+      </nav>
+      <span class="header-status"><span class="status-dot"></span> LOCAL SENDER</span>
+    </header>
+    <main>{% block content %}{% endblock %}</main>
+    <footer><span>SHA-256 INTEGRITY <b>·</b> HMAC AUTHENTICITY <b>·</b> RSA-PSS SIGNATURE</span><span>Documents are signed, not encrypted for confidentiality.</span></footer>
+  </div>
+</body>
+</html>

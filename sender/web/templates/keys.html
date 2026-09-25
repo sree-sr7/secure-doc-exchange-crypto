@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Generate Keys &middot; Secure Document Sender{% endblock %}
+{% block content %}
+<div class="grid">
+  <section class="card">
+    <h2>Generate a sender keypair</h2>
+    <p class="hint">
+      Creates an RSA-PSS keypair and a 32-byte shared HMAC key, the same
+      material <code>keygen.py</code> produces. Nothing is saved on the
+      server &mdash; download the files below yourself.
+    </p>
+    <form action="{{ url_for('keys_generate') }}" method="post">
+      <label>
+        Sender ID
+        <input type="text" name="sender_id" placeholder="alice" required>
+      </label>
+      <button type="submit">Generate Keys</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Generated material</h2>
+    {% if not keys %}
+      <p class="hint">Generate a keypair to see downloads here.</p>
+    {% else %}
+      <div class="banner banner-warn">
+        Keep <strong>{{ keys.private_filename }}</strong> and <strong>{{ keys.shared_filename }}</strong>
+        local. Hand off only the public key and the shared key to the receiver team, out-of-band.
+      </div>
+
+      <ul class="downloads">
+        <li>
+          <span>{{ keys.private_filename }} <em>(local only)</em></span>
+          <button type="button" onclick="downloadText('{{ keys.private_filename }}', privatePem)">Download</button>
+        </li>
+        <li>
+          <span>{{ keys.public_filename }} <em>(hand off to receiver)</em></span>
+          <button type="button" onclick="downloadText('{{ keys.public_filename }}', publicPem)">Download</button>
+        </li>
+        <li>
+          <span>{{ keys.shared_filename }} <em>(local + hand off, out-of-band)</em></span>
+          <button type="button" onclick="downloadBase64('{{ keys.shared_filename }}', '{{ keys.shared_key_b64 }}')">Download</button>
+        </li>
+      </ul>
+
+      <details open>
+        <summary>Private key PEM</summary>
+        <pre>{{ keys.private_pem }}</pre>
+      </details>
+      <details>
+        <summary>Public key PEM</summary>
+        <pre>{{ keys.public_pem }}</pre>
+      </details>
+
+      <script>
+        const privatePem = {{ keys.private_pem | tojson }};
+        const publicPem = {{ keys.public_pem | tojson }};
+
+        function triggerDownload(filename, blob) {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        }
+        function downloadText(filename, text) {
+          triggerDownload(filename, new Blob([text], { type: "application/x-pem-file" }));
+        }
+        function downloadBase64(filename, b64) {
+          const binary = atob(b64);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          triggerDownload(filename, new Blob([bytes], { type: "application/octet-stream" }));
+        }
+      </script>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

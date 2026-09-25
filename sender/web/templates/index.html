@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Send Document | SecureDoc{% endblock %}
+{% block content %}
+<section class="page-intro"><div><span class="eyebrow">SECURE TRANSMISSION / 01</span><h1>Send a document<span class="title-dot">.</span></h1><p>Protect your document with SHA-256, HMAC and an RSA-PSS signature before transmission.</p></div><div class="intro-badge"><span class="status-dot"></span> SENDER WORKSPACE</div></section>
+<div class="workspace">
+  <section class="card compose-card">
+    <div class="card-heading"><div class="heading-icon">↗</div><div><h2>New transmission</h2><p>Configure your document and signing keys</p></div><span class="step-count">01 / 02</span></div>
+    {% if error %}<div class="banner banner-error" role="alert">{{ error }}</div>{% endif %}
+    <form action="{{ url_for('send') }}" method="post" enctype="multipart/form-data" id="send-form">
+      <div class="field"><label for="sender_id">Sender ID</label><input id="sender_id" name="sender_id" type="text" placeholder="e.g. alice" autocomplete="off" required></div>
+      <div class="field"><label for="document">Document <span class="required">*</span></label><label class="upload-zone" for="document"><span class="upload-icon">↑</span><span class="upload-copy"><strong id="document-name">Choose a document</strong><small id="document-help">Click to browse · Max 100 MB</small></span><span class="browse-chip">Browse</span></label><input class="visually-hidden" id="document" name="document" type="file" required></div>
+      <div class="key-fields"><div class="field"><label for="private_key">RSA private key <span class="required">*</span></label><label class="compact-upload" for="private_key"><span class="key-icon">⌑</span><span id="private-name" class="truncate">Select .pem file</span><span class="file-action">Choose</span></label><input class="visually-hidden" id="private_key" name="private_key" type="file" accept=".pem" required></div><div class="field"><label for="shared_key">Shared HMAC key <span class="required">*</span></label><label class="compact-upload" for="shared_key"><span class="key-icon">⌑</span><span id="shared-name" class="truncate">Select key file</span><span class="file-action">Choose</span></label><input class="visually-hidden" id="shared_key" name="shared_key" type="file" required></div></div>
+      <div class="field"><label for="receiver_url">Receiver endpoint</label><input id="receiver_url" name="receiver_url" type="url" placeholder="http://127.0.0.1:8000/api/receive" required></div>
+      <div class="form-bottom"><div class="field timeout-field"><label for="timeout">Timeout</label><div class="timeout-input"><input id="timeout" name="timeout" type="number" min="1" step="1" value="30" required><span>sec</span></div></div><div class="security-note"><span>◈</span> Keys remain in memory for this request</div></div>
+      <button id="send-button" class="primary-button" type="submit"><span id="send-button-text">Sign &amp; Send Document</span><span aria-hidden="true">→</span></button>
+    </form>
+  </section>
+  <section class="card result-card" aria-live="polite"><div class="card-heading"><div class="heading-icon result-icon">◎</div><div><h2>Transmission overview</h2><p>Document protection &amp; delivery status</p></div><span class="step-count">02 / 02</span></div>
+  {% if not result %}
+    <div class="empty-content"><div class="empty-visual"><span class="empty-ring ring-one"></span><span class="empty-ring ring-two"></span><span class="empty-core">⇧</span></div><span class="eyebrow">READY WHEN YOU ARE</span><h3>Secure delivery starts here</h3><p>Select a document, attach your signing keys and send it to see the transmission details.</p><div class="process-steps"><span><b>01</b> Select file</span><i></i><span><b>02</b> Sign</span><i></i><span><b>03</b> Transmit</span></div></div>
+  {% else %}
+    {% if result.network_error %}<div class="result-status error"><span class="status-symbol">!</span><div><strong>Connection failed</strong><small>{{ result.network_error }}</small></div></div>
+    {% elif result.accepted %}<div class="result-status success"><span class="status-symbol">✓</span><div><strong>Document accepted</strong><small>Receiver confirmed acceptance · HTTP {{ result.http_status }}</small></div></div>
+    {% elif result.http_status is defined and result.http_status >= 400 %}<div class="result-status error"><span class="status-symbol">!</span><div><strong>Receiver returned an error</strong><small>HTTP {{ result.http_status }} · Acceptance not confirmed</small></div></div>
+    {% else %}<div class="result-status warning"><span class="status-symbol">!</span><div><strong>Request delivered; acceptance unconfirmed</strong><small>HTTP {{ result.http_status }} · The endpoint did not return ACCEPTED</small></div></div>{% endif %}
+    <div class="result-content"><div class="result-section-title">DOCUMENT DETAILS <span>TRANSMISSION METADATA</span></div><dl class="meta"><div><dt>Document</dt><dd>{{ result.filename }} <span class="muted">({{ result.size_bytes }} bytes)</span></dd></div><div><dt>Sender ID</dt><dd>{{ result.sender_id }}</dd></div><div><dt>Sequence</dt><dd>#{{ result.seq }}</dd></div><div><dt>Timestamp</dt><dd>{{ result.timestamp }}</dd></div><div><dt>Receiver URL</dt><dd class="break">{{ result.receiver_url }}</dd></div><div><dt>Nonce</dt><dd class="mono break">{{ result.nonce }}</dd></div><div class="hash-row"><dt>SHA-256 fingerprint</dt><dd class="mono break">{{ result.doc_sha256 }}</dd></div></dl>
+    <div class="result-section-title technical-title">TECHNICAL DETAILS <span>OPTIONAL</span></div>
+    {% if result.response_json or result.response_text %}<details class="technical"><summary>Receiver response <span>⌄</span></summary><pre>{{ result.response_json or result.response_text }}</pre></details>{% endif %}
+    <details class="technical"><summary>Full request body <span>⌄</span></summary><pre>{{ result.request_json }}</pre></details></div>
+  {% endif %}
+  </section>
+</div>
+<script>
+  for (const [id, nameId, helpId] of [['document','document-name','document-help'],['private_key','private-name',null],['shared_key','shared-name',null]]) {
+    const input = document.getElementById(id);
+    input.addEventListener('change', () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      document.getElementById(nameId).textContent = file.name;
+      if (helpId) document.getElementById(helpId).textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB · Ready to send';
+    });
+  }
+  const form = document.getElementById('send-form');
+  form.addEventListener('submit', () => {
+    if (!form.checkValidity()) return;
+    const button = document.getElementById('send-button');
+    button.disabled = true;
+    document.getElementById('send-button-text').textContent = 'Signing & sending…';
+  });
+</script>
+{% endblock %}
