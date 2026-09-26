@@ -22,3 +22,7 @@ secret*
 .vscode/
 .DS_Store
 Thumbs.db
+# Receiver runtime state
+receiver/docs/
+receiver/state/
+
